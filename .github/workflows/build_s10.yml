@@ -39,8 +39,8 @@ jobs:
 
       - name: Configure Git
         run: |
-          git config --global user.name "Builder"
-          git config --global user.email "builder@example.com"
+          git config --global user.name "sigmamavis06"
+          git config --global user.email "sigmamavis06@://github.com"
           git config --global color.ui false
 
       - name: Sync AxionOS & S10 Trees
@@ -49,7 +49,7 @@ jobs:
           cd /mnt/axion
           repo init -u https://github.com -b lineage-23.2 --git-lfs --depth=1
           mkdir -p .repo/local_manifests
-          curl -sL https://githubusercontent.com{{ github.repository_owner }}/local_manifests/main/beyond1lte.xml -o .repo/local_manifests/beyond1lte.xml
+          curl -sL https://githubusercontent.com -o .repo/local_manifests/beyond1lte.xml
           repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc --all)
 
       - name: Build ROM
