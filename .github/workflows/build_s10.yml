@@ -1,0 +1,70 @@
+name: Build AxionOS for S10 (beyond1lte)
+
+on:
+  workflow_dispatch:
+    inputs:
+      gms_variant:
+        description: 'GMS Varyantı (S10 sistem alanı için core veya pico seçin)'
+        required: true
+        default: 'core'
+        type: choice
+        options:
+          - core
+          - pico
+          - gms
+          - vanilla
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Maximize Build Disk Space
+        uses: easimon/maximize-build-disk-space@v10
+        with:
+          root-reserve-mb: 4096
+          swap-size-mb: 16384
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git git-lfs gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev libelf-dev liblz4-tool libncurses5 libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3-pip
+          mkdir -p ~/bin
+          curl https://googleapis.com > ~/bin/repo
+          chmod a+x ~/bin/repo
+          echo "$HOME/bin" >> $GITHUB_PATH
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "Builder"
+          git config --global user.email "builder@example.com"
+          git config --global color.ui false
+
+      - name: Sync AxionOS & S10 Trees
+        run: |
+          mkdir -p /mnt/axion && sudo chown $USER:$USER /mnt/axion
+          cd /mnt/axion
+          repo init -u https://github.com -b lineage-23.2 --git-lfs --depth=1
+          mkdir -p .repo/local_manifests
+          curl -sL https://githubusercontent.com{{ github.repository_owner }}/local_manifests/main/beyond1lte.xml -o .repo/local_manifests/beyond1lte.xml
+          repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc --all)
+
+      - name: Build ROM
+        run: |
+          cd /mnt/axion
+          source build/envsetup.sh
+          writeFlag TARGET_DISABLE_EPPE true
+          axion beyond1lte userdebug ${{ github.event.inputs.gms_variant }}
+          ax -br -j$(nproc --all)
+
+      - name: Upload ROM to Pixeldrain
+        if: success()
+        env:
+          PD_API_KEY: ${{ secrets.PD_API_KEY }}
+        run: |
+          ROM_FILE=$(find /mnt/axion/out/target/product/beyond1lte -name "axion-*.zip" | head -n 1)
+          echo "Uploading $ROM_FILE..."
+          curl -T "$ROM_FILE" -u :"$PD_API_KEY" https://pixeldrain.com
