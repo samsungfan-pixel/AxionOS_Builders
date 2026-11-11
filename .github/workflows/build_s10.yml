@@ -39,8 +39,8 @@ jobs:
 
       - name: Configure Git
         run: |
-          git config --global user.name "sigmamavis06"
-          git config --global user.email "sigmamavis06@://github.com"
+          git config --global user.name "samsungfan-pixel"
+          git config --global user.email "samsungfan-pixel@://github.com"
           git config --global color.ui false
 
       - name: Sync AxionOS & S10 Trees
