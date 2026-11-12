@@ -4,14 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       gms_variant:
-        description: 'GMS Varyantı (S10 sistem alanı için core veya pico seçin)'
+        description: 'GMS Varyantı (S10 sistem alanı için core seçin)'
         required: true
         default: 'core'
         type: choice
         options:
           - core
           - pico
-          - gms
           - vanilla
 
 jobs:
@@ -31,11 +30,7 @@ jobs:
       - name: Install Build Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git git-lfs gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev libelf-dev liblz4-tool libncurses5 libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3-pip
-          mkdir -p ~/bin
-          curl https://googleapis.com > ~/bin/repo
-          chmod a+x ~/bin/repo
-          echo "$HOME/bin" >> $GITHUB_PATH
+          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git git-lfs gnupg gperf imagemagick lib32ncurses-dev lib32readline-dev lib32z1-dev libelf-dev lz4 libncurses-dev libsdl1.2-dev libssl-dev libxml2-dev libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3-pip repo
 
       - name: Configure Git
         run: |
@@ -49,14 +44,45 @@ jobs:
           cd /mnt/axion
           repo init -u https://github.com -b lineage-23.2 --git-lfs --depth=1
           mkdir -p .repo/local_manifests
-          curl -sL https://githubusercontent.com -o .repo/local_manifests/beyond1lte.xml
+          cat << 'EOF' > .repo/local_manifests/beyond1lte.xml
+          <?xml version="1.0" encoding="UTF-8"?>
+          <manifest>
+            <project name="LineageOS/android_device_samsung_beyond1lte" path="device/samsung/beyond1lte" remote="github" revision="lineage-23.2" />
+            <project name="LineageOS/android_device_samsung_exynos9820-common" path="device/samsung/exynos9820-common" remote="github" revision="lineage-23.2" />
+            <project name="LineageOS/android_kernel_samsung_exynos9820" path="kernel/samsung/exynos9820" remote="github" revision="lineage-23.2" />
+            <project name="LineageOS/android_hardware_samsung" path="hardware/samsung" remote="github" revision="lineage-23.2" />
+            <project name="TheMuppets/proprietary_vendor_samsung_beyond1lte" path="vendor/samsung/beyond1lte" remote="github" revision="lineage-23.2" />
+            <project name="TheMuppets/proprietary_vendor_samsung_exynos9820-common" path="vendor/samsung/exynos9820-common" remote="github" revision="lineage-23.2" />
+          </manifest>
+          EOF
           repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc --all)
+          python3 -c '
+          import subprocess, os
+          repos = [
+              ("LineageOS/android_device_samsung_slsi_sepolicy", "device/samsung_slsi/sepolicy"),
+              ("LineageOS/android_hardware_samsung_slsi_nfc", "hardware/samsung_slsi/nfc"),
+              ("LineageOS/android_hardware_samsung_slsi-linaro_config", "hardware/samsung_slsi-linaro/config"),
+              ("LineageOS/android_hardware_samsung_slsi-linaro_exynos", "hardware/samsung_slsi-linaro/exynos"),
+              ("LineageOS/android_hardware_samsung_slsi-linaro_exynos5", "hardware/samsung_slsi-linaro/exynos5"),
+              ("LineageOS/android_hardware_samsung_slsi-linaro_graphics", "hardware/samsung_slsi-linaro/graphics"),
+              ("LineageOS/android_hardware_samsung_slsi-linaro_interfaces", "hardware/samsung_slsi-linaro/interfaces"),
+              ("LineageOS/android_hardware_samsung_slsi-linaro_openmax", "hardware/samsung_slsi-linaro/openmax"),
+          ]
+          branches = ["lineage-23.2", "lineage-23.1", "lineage-23.0", "lineage-22.2", "lineage-22.1"]
+          for repo, path in repos:
+              if os.path.exists(path): continue
+              os.makedirs(os.path.dirname(path), exist_ok=True)
+              for br in branches:
+                  if subprocess.run(["git", "clone", "--depth=1", "-b", br, f"https://github.com{repo}.git", path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+                      break
+          '
 
       - name: Build ROM
         run: |
           cd /mnt/axion
           source build/envsetup.sh
           writeFlag TARGET_DISABLE_EPPE true
+          writeFlag AXION_MAINTAINER "@beyond1hypee"
           axion beyond1lte userdebug ${{ github.event.inputs.gms_variant }}
           ax -br -j$(nproc --all)
 
