@@ -15,7 +15,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Maximize Build Disk Space & Swap
         run: |
@@ -41,7 +41,7 @@ jobs:
 
       - name: Sync AxionOS & S10 Trees
         run: |
-          mkdir -p /mnt/axion && sudo chown $USER:$USER /mnt/axion
+          sudo mkdir -p /mnt/axion && sudo chown $USER:$USER /mnt/axion
           cd /mnt/axion
           repo init -u https://github.com -b lineage-23.2 --git-lfs --depth=1
           mkdir -p .repo/local_manifests
