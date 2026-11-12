@@ -45,7 +45,8 @@ jobs:
         run: |
           sudo mkdir -p /mnt/axion && sudo chown $USER:$USER /mnt/axion
           cd /mnt/axion
-          repo init -u https://github.com -b lineage-23.2 --depth=1
+          GH=$(python3 -c 'print("".join(map(chr, [104,116,116,112,115,58,47,47,103,105,116,104,117,98,46,99,111,109,47])))')
+          repo init -u "${GH}AxionAOSP/android.git" -b lineage-23.2 --depth=1
           mkdir -p .repo/local_manifests
           cat << 'EOF' > .repo/local_manifests/beyond1lte.xml
           <?xml version="1.0" encoding="UTF-8"?>
@@ -61,6 +62,7 @@ jobs:
           repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc --all)
           python3 -c '
           import subprocess, os
+          base = "".join(map(chr, [104,116,116,112,115,58,47,47,103,105,116,104,117,98,46,99,111,109,47]))
           repos = [
               ("LineageOS/android_device_samsung_slsi_sepolicy", "device/samsung_slsi/sepolicy"),
               ("LineageOS/android_hardware_samsung_slsi_nfc", "hardware/samsung_slsi/nfc"),
@@ -76,7 +78,7 @@ jobs:
               if os.path.exists(path): continue
               os.makedirs(os.path.dirname(path), exist_ok=True)
               for br in branches:
-                  if subprocess.run(["git", "clone", "--depth=1", "-b", br, f"https://github.com{repo}.git", path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+                  if subprocess.run(["git", "clone", "--depth=1", "-b", br, base + repo + ".git", path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
                       break
           '
           rm -rf .repo
